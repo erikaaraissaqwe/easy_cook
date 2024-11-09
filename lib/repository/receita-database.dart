@@ -1,76 +1,27 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import '../model/receita.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:easy_cook/model/receita.dart';
 
 class ReceitaDatabase {
-  static final ReceitaDatabase instance = ReceitaDatabase._init();
-  static Database? _database;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  ReceitaDatabase._init();
-
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB('receitas.db');
-    return _database!;
+  Stream<List<Receita>> streamAllReceitas() {
+    return _db.collection('receitas').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Receita.fromDocument(doc);
+      }).toList();
+    });
   }
 
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+  void create(Receita receita) {
+    _db.collection('receitas').add(receita.toMap());
   }
 
-  Future _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE receitas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nome TEXT NOT NULL,
-        imagem TEXT,
-        passos TEXT NOT NULL,
-        ingredientes TEXT NOT NULL,
-        categoria TEXT NOT NULL
-      )
-    ''');
+  // Método para atualizar uma receita
+  void update(Receita receita) {
+    _db.collection('receitas').doc(receita.id).update(receita.toMap());
   }
 
-  Future<Receita> create(Receita receita) async {
-    final db = await instance.database;
-    final id = await db.insert('receitas', receita.toMap());
-    return receita..copyWith(id: id);
-  }
-
-  Future<List<Receita>> readAllReceitas() async {
-    final db = await instance.database;
-    final result = await db.query('receitas');
-    return result.map((json) => Receita.fromMap(json)).toList();
-  }
-
-  Future<int> update(Receita receita) async {
-    final db = await instance.database;
-    return db.update(
-      'receitas',
-      receita.toMap(),
-      where: 'id = ?',
-      whereArgs: [receita.id],
-    );
-  }
-
-  Future<int> delete(int id) async {
-    final db = await instance.database;
-    return await db.delete(
-      'receitas',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future close() async {
-    final db = await instance.database;
-    db.close();
+  void delete(String receitaId) {
+    _db.collection('receitas').doc(receitaId).delete();
   }
 }

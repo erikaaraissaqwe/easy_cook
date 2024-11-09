@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Receita {
-  int? id;
+  String? id;
   String nome;
   String? imagem;
   String passos;
@@ -17,7 +19,6 @@ class Receita {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'nome': nome,
       'imagem': imagem,
       'passos': passos,
@@ -26,19 +27,20 @@ class Receita {
     };
   }
 
-  factory Receita.fromMap(Map<String, dynamic> map) {
+  factory Receita.fromDocument(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return Receita(
-      id: map['id'],
-      nome: map['nome'],
-      imagem: map['imagem'],
-      passos: map['passos'],
-      ingredientes: map['ingredientes'],
-      categoria: map['categoria'],
+      id: doc.id,
+      nome: data['nome'] ?? '',
+      imagem: data['imagem'],
+      passos: data['passos'] ?? '',
+      ingredientes: data['ingredientes'] ?? '',
+      categoria: data['categoria'] ?? '',
     );
   }
 
   Receita copyWith({
-    int? id,
+    String? id,
     String? nome,
     String? imagem,
     String? passos,

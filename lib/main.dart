@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:easy_cook/repository/receita-database.dart';
 import 'package:easy_cook/view/detalhes-receita.dart';
 import 'package:easy_cook/model/receita.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(ReceitaApp());
 }
 
@@ -29,17 +32,7 @@ class ListaReceitas extends StatefulWidget {
 class _ListaReceitasState extends State<ListaReceitas> {
   late Future<List<Receita>> receitas;
 
-  @override
-  void initState() {
-    super.initState();
-    refreshReceitas();
-  }
-
-  void refreshReceitas() {
-    setState(() {
-      receitas = ReceitaDatabase.instance.readAllReceitas();
-    });
-  }
+  ReceitaDatabase receitaDatabase = ReceitaDatabase();
 
   @override
   Widget build(BuildContext context) {
@@ -64,24 +57,24 @@ class _ListaReceitasState extends State<ListaReceitas> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Receita>>(
-              future: receitas,
+            child: StreamBuilder<List<Receita>>(
+              stream: receitaDatabase.streamAllReceitas(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Erro: ${snapshot.error}'));
-                } else if (snapshot.hasData) {
+                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   final receitas = snapshot.data!;
                   return ListView.builder(
                     itemCount: receitas.length,
                     itemBuilder: (context, index) {
                       final receita = receitas[index];
                       return Card(
-                        margin: EdgeInsets.symmetric(vertical: 8),
+                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                         child: ListTile(
                           contentPadding: EdgeInsets.all(10),
-                          leading: receita.imagem != null
+                          leading: receita.imagem != null && File(receita.imagem!).existsSync()
                               ? Image.file(File(receita.imagem!), width: 50, height: 50)
                               : Icon(Icons.food_bank),
                           title: Text(
@@ -95,12 +88,9 @@ class _ListaReceitasState extends State<ListaReceitas> {
                                 builder: (_) => CadastroReceita(receita: receita),
                               ),
                             );
-                            if (updatedReceita != null) {
-                              refreshReceitas();
-                            }
                           },
                           trailing: IconButton(
-                            icon: Icon(Icons.delete),
+                            icon: Icon(Icons.delete, color: Colors.red),
                             onPressed: () async {
                               bool? confirmDelete = await showDialog(
                                 context: context,
@@ -110,15 +100,11 @@ class _ListaReceitasState extends State<ListaReceitas> {
                                     content: Text('Tem certeza que deseja excluir esta receita?'),
                                     actions: [
                                       TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop(false);
-                                        },
+                                        onPressed: () => Navigator.of(context).pop(false),
                                         child: Text('Cancelar'),
                                       ),
                                       TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop(true);
-                                        },
+                                        onPressed: () => Navigator.of(context).pop(true),
                                         child: Text('Excluir'),
                                       ),
                                     ],
@@ -126,8 +112,7 @@ class _ListaReceitasState extends State<ListaReceitas> {
                                 },
                               );
                               if (confirmDelete == true) {
-                                await ReceitaDatabase.instance.delete(receita.id!);
-                                refreshReceitas();
+                                receitaDatabase.delete(receita.id!);
                               }
                             },
                           ),
@@ -150,9 +135,6 @@ class _ListaReceitasState extends State<ListaReceitas> {
               builder: (_) => CadastroReceita(),
             ),
           );
-          if (novaReceita != null) {
-            refreshReceitas();
-          }
         },
         child: Icon(Icons.add),
       ),

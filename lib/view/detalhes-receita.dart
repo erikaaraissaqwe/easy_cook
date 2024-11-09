@@ -49,6 +49,8 @@ class _CadastroReceitaState extends State<CadastroReceita> {
     }
   }
 
+  ReceitaDatabase receitaDatabase = ReceitaDatabase();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,9 +177,9 @@ class _CadastroReceitaState extends State<CadastroReceita> {
                       );
 
                       if (widget.receita == null) {
-                        await ReceitaDatabase.instance.create(novaReceita);
+                        receitaDatabase.create(novaReceita);
                       } else {
-                        await ReceitaDatabase.instance.update(novaReceita);
+                        receitaDatabase.update(novaReceita);
                       }
 
                       Navigator.of(context).pop(novaReceita);
